@@ -15,6 +15,7 @@
 
 const int kRepeatCount = 3;
 const int kMinimumValue = 0;
+const int kTimeColumnWidth = 10;
 const int kMaximumValue = 1000000;
 const int kRandomSeed = 2024;
 const std::size_t kSequenceSizes[] = { 2000000, 1000000, 5000000 };
@@ -133,15 +134,7 @@ void joinThreads(std::vector<std::thread>& threadPool) {
 }
 
 
-std::vector<int>::const_iterator findGlobalMinimum(const std::vector<std::vector<int>::const_iterator>& localResults) {
-    auto globalMinimumIterator = localResults[0];
-    for (std::size_t resultIndex = 1; resultIndex < localResults.size(); ++resultIndex) {
-        if (*localResults[resultIndex] < *globalMinimumIterator) {
-            globalMinimumIterator = localResults[resultIndex];
-        }
-    }
-    return globalMinimumIterator;
-}
+
 
 std::vector<int>::const_iterator parallelMinElement(
     std::vector<int>::const_iterator dataBegin,
@@ -156,7 +149,8 @@ std::vector<int>::const_iterator parallelMinElement(
     spawnThreads(dataBegin, boundsVector, threadPool, localResults);
     joinThreads(threadPool);
 
-    return findGlobalMinimum(localResults);
+    return *std::min_element(localResults.begin(), localResults.end(),
+        [](auto a, auto b) { return *a < *b; });
 }
 
 
@@ -182,18 +176,13 @@ void printLibraryHeader() {
     std::cout << std::format("{:<10}{:<10}{:<10}{:<10}{:<10}{:<10}\n",
         "N", "plain", "seq", "unseq", "par", "par_unseq");
 }
-
-void printLibraryRow(std::size_t sequenceLength, const std::vector<double>& measuredTimes) {
-    
-    std::cout << std::format("{:<10}", sequenceLength);
-
-
+void printRow(std::size_t label, int labelWidth, const std::vector<double>& measuredTimes) {
+    std::cout << std::format("{:<{}}", label, labelWidth);
     for (double timeMs : measuredTimes) {
-        std::cout << std::format("{:<10.3f}", timeMs);
+        std::cout << std::format("{:<{}.3f}", timeMs, kTimeColumnWidth);
     }
-    std::cout << std::endl;
+    std::cout << '\n';
 }
-
 void runLibraryTests(const std::vector<int>& dataVector) {
     auto dataBegin = dataVector.cbegin();
     auto dataEnd = dataVector.cend();
@@ -205,7 +194,7 @@ void runLibraryTests(const std::vector<int>& dataVector) {
     measuredTimes.push_back(measureTime([&] { return std::min_element(std::execution::par, dataBegin, dataEnd); }));
     measuredTimes.push_back(measureTime([&] { return std::min_element(std::execution::par_unseq, dataBegin, dataEnd); }));
 
-    printLibraryRow(dataVector.size(), measuredTimes);
+    printRow(dataVector.size(), 10, measuredTimes);
 }
 
 
@@ -219,16 +208,6 @@ void printCustomHeader() {
     std::cout << std::endl;
 }
 
-void printCustomRow(std::size_t threadCount, const std::vector<double>& measuredTimes) {
-    
-    std::cout << std::format("{:<6}", threadCount);
-
-    
-    for (double timeMs : measuredTimes) {
-        std::cout << std::format("{:<10.3f}", timeMs);
-    }
-    std::cout << std::endl;
-}
 
 void printBestK(std::size_t sequenceLength, std::size_t bestThreadCount) {
     double hardwareThreads = std::thread::hardware_concurrency();
@@ -249,7 +228,7 @@ void evaluateK(
             return parallelMinElement(dataset.cbegin(), dataset.cend(), threadCount);
             }));
     }
-    printCustomRow(threadCount, rowTimes);
+    printRow(threadCount, 6, rowTimes);
     allMeasuredTimes.push_back(rowTimes);
 }
 
@@ -258,7 +237,7 @@ void calculateAndPrintBest(const std::vector<std::size_t>& threadCountList,
     const std::vector<std::vector<double>>& allMeasuredTimes) {
     std::cout << "\nBest K analysis (Hardware threads=" << std::thread::hardware_concurrency() << ")\n";
 
-    for (std::size_t columnIndex = 0; columnIndex < 3; ++columnIndex) {
+    for (std::size_t columnIndex = 0; columnIndex < std::size(kSequenceSizes); ++columnIndex) {
 
         std::size_t bestRowIndex = 0;
 

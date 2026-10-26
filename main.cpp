@@ -211,8 +211,8 @@ void printCustomHeader() {
 
 void printBestK(std::size_t sequenceLength, std::size_t bestThreadCount) {
     double hardwareThreads = std::thread::hardware_concurrency();
-    std::cout << "N=" << sequenceLength << "  K=" << bestThreadCount << "  K/HW=";
-    std::cout << std::fixed << std::setprecision(2)<< (hardwareThreads > 0 ? (bestThreadCount / hardwareThreads) : 0) << '\n';
+    double ratio = hardwareThreads > 0 ? bestThreadCount / hardwareThreads : 0.0;
+    std::cout << std::format("N={}  K={}  K/HW={:.2f}\n", sequenceLength, bestThreadCount, ratio);
 }
 
 void evaluateK(
